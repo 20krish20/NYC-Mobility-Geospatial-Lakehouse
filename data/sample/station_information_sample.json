@@ -1,0 +1,33 @@
+{
+  "last_updated": 1700000000,
+  "ttl": 60,
+  "version": "2.3",
+  "data": {
+    "stations": [
+      {
+        "station_id": "519",
+        "name": "W 21 St & 6 Ave",
+        "lat": 40.74173,
+        "lon": -73.99416,
+        "capacity": 39,
+        "region_id": "71"
+      },
+      {
+        "station_id": "382",
+        "name": "Wythe Ave & Metropolitan Ave",
+        "lat": 40.71594678,
+        "lon": -73.96334072,
+        "capacity": 31,
+        "region_id": "71"
+      },
+      {
+        "station_id": "470",
+        "name": "Vernon Blvd & 50 Ave",
+        "lat": 40.74394,
+        "lon": -73.95623,
+        "capacity": 24,
+        "region_id": "71"
+      }
+    ]
+  }
+}

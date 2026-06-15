@@ -1,0 +1,62 @@
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: nyc-mobility-postgres
+    environment:
+      POSTGRES_USER: mobility
+      POSTGRES_PASSWORD: mobility
+      POSTGRES_DB: mobility
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mobility -d mobility"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  kafka:
+    # bitnami/kafka was retired from Docker Hub's free tier; bitnamilegacy
+    # mirrors the same image + KAFKA_CFG_* env var interface.
+    image: bitnamilegacy/kafka:3.7
+    container_name: nyc-mobility-kafka
+    ports:
+      - "9094:9094"
+    environment:
+      KAFKA_CFG_NODE_ID: "0"
+      KAFKA_CFG_PROCESS_ROLES: controller,broker
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 0@kafka:9093
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+    volumes:
+      - kafka_data:/bitnami/kafka
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  gbfs-poller:
+    build:
+      context: .
+      dockerfile: docker/poller.Dockerfile
+    container_name: nyc-mobility-gbfs-poller
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_TOPIC: station-status
+      GBFS_BASE_URL: https://gbfs.citibikenyc.com/gbfs/2.3/en
+      POLL_INTERVAL_SECONDS: "60"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  kafka_data:
