@@ -111,7 +111,7 @@ This project is being built incrementally, phase by phase:
       publishing to Kafka
 - [x] **Phase 2** — Spark Structured Streaming enrichment (H3 + Sedona spatial
       join), bronze/silver Delta tables
-- [ ] **Phase 3** — Hotspot detection + gold aggregates
+- [x] **Phase 3** — Hotspot detection + gold aggregates
 - [ ] **Phase 4** — Historical batch trip pipeline + data quality checks
 - [ ] **Phase 5** — FastAPI serving layer + Streamlit dashboard
 - [ ] **Phase 6 (stretch)** — NYC TLC large-scale batch + Iceberg

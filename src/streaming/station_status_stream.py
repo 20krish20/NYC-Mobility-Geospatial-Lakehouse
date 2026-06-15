@@ -9,6 +9,8 @@ Pipeline:
 3. Enrich: H3 cell index (resolution 9), imbalance ratio, and borough via a
    Sedona point-in-polygon join against the NYC borough polygons.
 4. Write the enriched stream -> **silver** Delta table.
+5. Aggregate the enriched stream into 15-minute windows per H3 cell, flag
+   sustained empty/full hotspots -> **gold** ``gold_hotspots`` Delta table.
 """
 
 from __future__ import annotations
@@ -29,6 +31,7 @@ from pyspark.sql.types import (
 )
 
 from streaming.h3_utils import H3_RESOLUTION, with_h3_index
+from streaming.hotspot_detection import compute_gold_hotspots
 from streaming.spark_session import get_spark_session
 from streaming.spatial_join import join_stations_to_boroughs, load_borough_polygons
 
@@ -64,6 +67,7 @@ class StreamConfig:
     boroughs_geojson_path: str = "data/geo/nyc_boroughs.geojson"
     bronze_path: str = "data/lake/bronze/station_status"
     silver_path: str = "data/lake/silver/station_status"
+    gold_path: str = "data/lake/gold/hotspots"
     checkpoint_dir: str = "data/checkpoints"
 
     @classmethod
@@ -78,6 +82,7 @@ class StreamConfig:
             boroughs_geojson_path=env.get("BOROUGHS_GEOJSON_PATH", "data/geo/nyc_boroughs.geojson"),
             bronze_path=env.get("BRONZE_PATH", "data/lake/bronze/station_status"),
             silver_path=env.get("SILVER_PATH", "data/lake/silver/station_status"),
+            gold_path=env.get("GOLD_PATH", "data/lake/gold/hotspots"),
             checkpoint_dir=env.get("CHECKPOINT_DIR", "data/checkpoints"),
         )
 
@@ -88,6 +93,10 @@ class StreamConfig:
     @property
     def silver_checkpoint(self) -> str:
         return f"{self.checkpoint_dir}/silver_station_status"
+
+    @property
+    def gold_checkpoint(self) -> str:
+        return f"{self.checkpoint_dir}/gold_hotspots"
 
 
 def read_station_status_stream(spark, config: StreamConfig) -> DataFrame:
@@ -161,6 +170,15 @@ def write_silver_stream(stream_df: DataFrame, config: StreamConfig) -> Streaming
     )
 
 
+def write_gold_hotspots_stream(stream_df: DataFrame, config: StreamConfig) -> StreamingQuery:
+    return (
+        stream_df.writeStream.format("delta")
+        .option("checkpointLocation", config.gold_checkpoint)
+        .outputMode("append")
+        .start(config.gold_path)
+    )
+
+
 def run(config: StreamConfig | None = None) -> None:
     config = config or StreamConfig.from_env()
     spark = get_spark_session(app_name="nyc-mobility-station-status-stream")
@@ -172,6 +190,9 @@ def run(config: StreamConfig | None = None) -> None:
     boroughs_df = load_borough_polygons(spark, config.boroughs_geojson_path)
     enriched_stream = enrich_station_status(raw_stream, station_info_df, boroughs_df)
     write_silver_stream(enriched_stream, config)
+
+    gold_stream = compute_gold_hotspots(enriched_stream)
+    write_gold_hotspots_stream(gold_stream, config)
 
     spark.streams.awaitAnyTermination()
 
