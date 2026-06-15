@@ -16,8 +16,9 @@ from sedona.spark import SedonaContext
 SEDONA_PACKAGE = "org.apache.sedona:sedona-spark-shaded-3.5_2.12:1.6.1"
 GEOTOOLS_PACKAGE = "org.datasyslab:geotools-wrapper:1.6.1-28.2"
 DELTA_PACKAGE = "io.delta:delta-spark_2.12:3.2.0"
+KAFKA_PACKAGE = "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1"
 
-MAVEN_PACKAGES = ",".join([SEDONA_PACKAGE, GEOTOOLS_PACKAGE, DELTA_PACKAGE])
+MAVEN_PACKAGES = ",".join([SEDONA_PACKAGE, GEOTOOLS_PACKAGE, DELTA_PACKAGE, KAFKA_PACKAGE])
 
 SQL_EXTENSIONS = ",".join(
     [
