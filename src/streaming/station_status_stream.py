@@ -8,9 +8,11 @@ Pipeline:
    (written by the GBFS poller) to bring in name/lat/lon/capacity.
 3. Enrich: H3 cell index (resolution 9), imbalance ratio, and borough via a
    Sedona point-in-polygon join against the NYC borough polygons.
-4. Write the enriched stream -> **silver** Delta table.
-5. Aggregate the enriched stream into 15-minute windows per H3 cell, flag
-   sustained empty/full hotspots -> **gold** ``gold_hotspots`` Delta table.
+4. Apply data-quality expectations: records that fail (e.g. bad coordinates,
+   non-positive capacity, missing required fields) are routed to a
+   **quarantine** Delta table; the rest are written to **silver**.
+5. Aggregate the silver (valid) stream into 15-minute windows per H3 cell,
+   flag sustained empty/full hotspots -> **gold** ``gold_hotspots`` Delta table.
 """
 
 from __future__ import annotations
@@ -30,6 +32,7 @@ from pyspark.sql.types import (
     StructType,
 )
 
+from data_quality.expectations import apply_expectations
 from streaming.h3_utils import H3_RESOLUTION, with_h3_index
 from streaming.hotspot_detection import compute_gold_hotspots
 from streaming.spark_session import get_spark_session
@@ -68,6 +71,7 @@ class StreamConfig:
     bronze_path: str = "data/lake/bronze/station_status"
     silver_path: str = "data/lake/silver/station_status"
     gold_path: str = "data/lake/gold/hotspots"
+    quarantine_path: str = "data/lake/quarantine/station_status"
     checkpoint_dir: str = "data/checkpoints"
 
     @classmethod
@@ -83,6 +87,7 @@ class StreamConfig:
             bronze_path=env.get("BRONZE_PATH", "data/lake/bronze/station_status"),
             silver_path=env.get("SILVER_PATH", "data/lake/silver/station_status"),
             gold_path=env.get("GOLD_PATH", "data/lake/gold/hotspots"),
+            quarantine_path=env.get("QUARANTINE_PATH", "data/lake/quarantine/station_status"),
             checkpoint_dir=env.get("CHECKPOINT_DIR", "data/checkpoints"),
         )
 
@@ -97,6 +102,10 @@ class StreamConfig:
     @property
     def gold_checkpoint(self) -> str:
         return f"{self.checkpoint_dir}/gold_hotspots"
+
+    @property
+    def quarantine_checkpoint(self) -> str:
+        return f"{self.checkpoint_dir}/quarantine_station_status"
 
 
 def read_station_status_stream(spark, config: StreamConfig) -> DataFrame:
@@ -179,6 +188,16 @@ def write_gold_hotspots_stream(stream_df: DataFrame, config: StreamConfig) -> St
     )
 
 
+def write_quarantine_stream(stream_df: DataFrame, config: StreamConfig) -> StreamingQuery:
+    return (
+        stream_df.writeStream.format("delta")
+        .option("checkpointLocation", config.quarantine_checkpoint)
+        .option("mergeSchema", "true")
+        .outputMode("append")
+        .start(config.quarantine_path)
+    )
+
+
 def run(config: StreamConfig | None = None) -> None:
     config = config or StreamConfig.from_env()
     spark = get_spark_session(app_name="nyc-mobility-station-status-stream")
@@ -189,9 +208,12 @@ def run(config: StreamConfig | None = None) -> None:
     station_info_df = load_station_information(spark, config.station_information_path)
     boroughs_df = load_borough_polygons(spark, config.boroughs_geojson_path)
     enriched_stream = enrich_station_status(raw_stream, station_info_df, boroughs_df)
-    write_silver_stream(enriched_stream, config)
 
-    gold_stream = compute_gold_hotspots(enriched_stream)
+    valid_stream, quarantine_stream = apply_expectations(enriched_stream)
+    write_silver_stream(valid_stream, config)
+    write_quarantine_stream(quarantine_stream, config)
+
+    gold_stream = compute_gold_hotspots(valid_stream)
     write_gold_hotspots_stream(gold_stream, config)
 
     spark.streams.awaitAnyTermination()

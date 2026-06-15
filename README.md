@@ -30,9 +30,10 @@ Spark Structured Streaming consumer
         |
         v
 Delta Lake (medallion architecture)
-  bronze: raw station_status events
-  silver: enriched events (+ h3_index, borough, imbalance_ratio)
-  gold:   rolling hotspot aggregates per H3 cell / borough / window
+  bronze:     raw station_status events
+  quarantine: records failing data-quality checks (bad coords, capacity <= 0, nulls)
+  silver:     enriched events (+ h3_index, borough, imbalance_ratio)
+  gold:       rolling hotspot aggregates per H3 cell / borough / window
 
 Serving layer:
   Postgres + PostGIS (latest snapshot + borough polygons)
@@ -43,8 +44,9 @@ Dashboard:
 ```
 
 A second batch pipeline (Spark + Sedona) ingests historical Citi Bike trip
-data, spatially joins origin/destination coordinates to boroughs, and H3-bins
-trips for demand analysis.
+CSVs, H3-bins origin/destination coordinates, spatially joins them to NYC
+borough polygons, and writes a `gold_trips` Delta table for demand/flow
+analysis between H3 cells and boroughs.
 
 ## Technology map
 
@@ -54,7 +56,8 @@ trips for demand analysis.
 | **Spark Structured Streaming** | `src/streaming/station_status_stream.py` consumes and enriches |
 | **Apache Sedona** | `src/streaming/spatial_join.py`, `src/batch/load_historical_trips.py` — point-in-polygon joins |
 | **H3**            | `src/streaming/h3_utils.py` — spatial indexing of stations and trip endpoints |
-| **Delta Lake**    | bronze/silver/gold tables for streaming and batch pipelines |
+| **Delta Lake**    | bronze/silver/gold/quarantine tables for streaming and batch pipelines |
+| **Data quality**  | `src/data_quality/expectations.py` — bronze->silver checks (NYC bbox, capacity, nulls), failing records routed to a quarantine table |
 | **PostGIS**       | `db/init/`, `src/serving/api/db.py` — station snapshot + borough polygons, nearest-station queries |
 | **FastAPI**       | `src/serving/api/` — `/stations/nearby`, `/hotspots`, `/h3/{res}/cells` |
 | **Streamlit**     | `src/serving/dashboard/app.py` — live map + hotspot heatmap |
@@ -112,6 +115,6 @@ This project is being built incrementally, phase by phase:
 - [x] **Phase 2** — Spark Structured Streaming enrichment (H3 + Sedona spatial
       join), bronze/silver Delta tables
 - [x] **Phase 3** — Hotspot detection + gold aggregates
-- [ ] **Phase 4** — Historical batch trip pipeline + data quality checks
+- [x] **Phase 4** — Historical batch trip pipeline + data quality checks
 - [ ] **Phase 5** — FastAPI serving layer + Streamlit dashboard
 - [ ] **Phase 6 (stretch)** — NYC TLC large-scale batch + Iceberg

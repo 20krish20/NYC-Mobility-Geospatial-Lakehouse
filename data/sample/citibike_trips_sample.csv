@@ -1,0 +1,7 @@
+ride_id,rideable_type,started_at,ended_at,start_station_name,start_station_id,end_station_name,end_station_id,start_lat,start_lng,end_lat,end_lng,member_casual
+T1,classic_bike,2024-01-15 08:00:00,2024-01-15 08:15:00,Empire State Building,6001,Barclays Center,6002,40.748817,-73.985428,40.682661,-73.975225,member
+T2,electric_bike,2024-01-15 09:00:00,2024-01-15 09:20:00,Barclays Center,6002,Citi Field,6003,40.682661,-73.975225,40.7571,-73.8458,member
+T3,classic_bike,2024-01-15 10:00:00,2024-01-15 10:30:00,Citi Field,6003,Yankee Stadium,6004,40.7571,-73.8458,40.8296,-73.9262,casual
+T4,classic_bike,2024-01-15 11:00:00,2024-01-15 11:45:00,Yankee Stadium,6004,Staten Island Ferry Terminal,6005,40.8296,-73.9262,40.6437,-74.0734,member
+T5,electric_bike,2024-01-15 12:00:00,2024-01-15 12:50:00,Staten Island Ferry Terminal,6005,Empire State Building,6001,40.6437,-74.0734,40.748817,-73.985428,casual
+T6,classic_bike,2024-01-15 13:00:00,2024-01-15 13:05:00,Empire State Building,6001,Empire State Building,6001,40.748817,-73.985428,40.748817,-73.985428,member
