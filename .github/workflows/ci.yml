@@ -11,6 +11,24 @@ jobs:
       matrix:
         python-version: ["3.11", "3.12"]
 
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: mobility
+          POSTGRES_PASSWORD: mobility
+          POSTGRES_DB: mobility
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mobility -d mobility"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      TEST_POSTGRES_DSN: postgresql://mobility:mobility@localhost:5432/mobility
+
     steps:
       - uses: actions/checkout@v4
 
@@ -35,6 +53,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
+
+      - name: Initialize Postgres schema
+        run: PGPASSWORD=mobility psql -h localhost -U mobility -d mobility -f db/init/01_schema.sql
 
       - name: Lint with ruff
         run: ruff check .

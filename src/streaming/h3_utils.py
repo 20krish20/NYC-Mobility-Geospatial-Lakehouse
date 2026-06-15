@@ -12,10 +12,9 @@ from pyspark.sql import Column, DataFrame
 from pyspark.sql.functions import udf
 from pyspark.sql.types import StringType
 
-# Resolution 9 cells are ~0.1 km^2, roughly city-block sized -- fine grained
-# enough to distinguish individual Citi Bike stations without exploding the
-# number of distinct cells.
-H3_RESOLUTION = 9
+from streaming.h3_config import H3_RESOLUTION
+
+__all__ = ["H3_RESOLUTION", "lat_lon_to_h3", "h3_udf", "with_h3_index"]
 
 
 def lat_lon_to_h3(

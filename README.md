@@ -35,12 +35,16 @@ Delta Lake (medallion architecture)
   silver:     enriched events (+ h3_index, borough, imbalance_ratio)
   gold:       rolling hotspot aggregates per H3 cell / borough / window
 
+Snapshot writer (standalone, polls silver every 60s):
+  latest row per station_id --> upsert into Postgres "stations" table
+
 Serving layer:
   Postgres + PostGIS (latest snapshot + borough polygons)
   FastAPI: /stations/nearby, /hotspots, /h3/{res}/cells, /health
 
 Dashboard:
-  Streamlit + pydeck/folium map of stations & H3 hotspot heatmap
+  Streamlit + pydeck map of stations (colored by imbalance_ratio) &
+  H3 hexagon hotspot heatmap, pulling from the FastAPI endpoints
 ```
 
 A second batch pipeline (Spark + Sedona) ingests historical Citi Bike trip
@@ -59,8 +63,9 @@ analysis between H3 cells and boroughs.
 | **Delta Lake**    | bronze/silver/gold/quarantine tables for streaming and batch pipelines |
 | **Data quality**  | `src/data_quality/expectations.py` — bronze->silver checks (NYC bbox, capacity, nulls), failing records routed to a quarantine table |
 | **PostGIS**       | `db/init/`, `src/serving/api/db.py` — station snapshot + borough polygons, nearest-station queries |
-| **FastAPI**       | `src/serving/api/` — `/stations/nearby`, `/hotspots`, `/h3/{res}/cells` |
-| **Streamlit**     | `src/serving/dashboard/app.py` — live map + hotspot heatmap |
+| **FastAPI**       | `src/serving/api/` — `/stations/nearby`, `/hotspots`, `/h3/{res}/cells`, `/health` |
+| **Streamlit**     | `src/serving/dashboard/app.py` — live map + hotspot heatmap + borough summary |
+| **Snapshot writer** | `src/serving/snapshot_writer.py` — silver Delta -> Postgres `stations` table, the data source for `/stations/nearby` |
 
 ## Repo layout
 
@@ -85,8 +90,22 @@ docker compose up
 ```
 
 This brings up Postgres+PostGIS (pre-loaded with NYC borough polygons), a
-single-broker Kafka, and the GBFS poller, which begins publishing live
-station status to the `station-status` topic every 60 seconds.
+single-broker Kafka, the GBFS poller (publishing live station status to the
+`station-status` topic every 60 seconds), the FastAPI serving layer at
+http://localhost:8000 (docs at `/docs`), and the Streamlit dashboard at
+http://localhost:8501.
+
+The Spark jobs (streaming enrichment, historical batch, snapshot writer) are
+run separately on the host -- they need a JVM + Sedona/Delta jars and aren't
+containerized to keep the Compose stack lightweight:
+
+```bash
+python -m streaming.station_status_stream   # bronze/silver/gold Delta tables
+python -m serving.snapshot_writer            # silver -> Postgres "stations" table
+```
+
+Without these running, `/hotspots` and `/h3/{res}/cells` return empty lists
+and `/stations/nearby` returns no rows -- `/health` reports both states.
 
 ## Development
 
@@ -105,6 +124,11 @@ Delta Lake. On first run, Spark/Ivy downloads the Sedona, GeoTools, and Delta
 jars from Maven Central (cached afterwards in `~/.ivy2`) — this requires
 Java 17 and a one-time internet connection, but no GBFS/Kafka access.
 
+The Postgres-backed API and snapshot-writer tests (`tests/test_api.py`,
+`tests/test_snapshot_writer.py`) need a running Postgres+PostGIS with the
+schema from `db/init/01_schema.sql` -- run `docker compose up -d postgres`
+first. If Postgres isn't reachable, those tests are skipped automatically.
+
 ## Status
 
 This project is being built incrementally, phase by phase:
@@ -116,5 +140,7 @@ This project is being built incrementally, phase by phase:
       join), bronze/silver Delta tables
 - [x] **Phase 3** — Hotspot detection + gold aggregates
 - [x] **Phase 4** — Historical batch trip pipeline + data quality checks
-- [ ] **Phase 5** — FastAPI serving layer + Streamlit dashboard
+- [x] **Phase 5** — FastAPI serving layer (`/stations/nearby`, `/hotspots`,
+      `/h3/{res}/cells`, `/health`) + Streamlit dashboard + standalone
+      station snapshot writer (silver Delta -> Postgres)
 - [ ] **Phase 6 (stretch)** — NYC TLC large-scale batch + Iceberg

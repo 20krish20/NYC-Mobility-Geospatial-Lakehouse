@@ -57,6 +57,38 @@ services:
       POLL_INTERVAL_SECONDS: "60"
     restart: unless-stopped
 
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    container_name: nyc-mobility-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_DSN: postgresql://mobility:mobility@postgres:5432/mobility
+      GOLD_HOTSPOTS_PATH: data/lake/gold/hotspots
+    ports:
+      - "8000:8000"
+    volumes:
+      # The streaming job and snapshot writer (run separately, see README)
+      # write here; mounted so the API can pick up new gold/silver data.
+      - ./data/lake:/app/data/lake:ro
+    restart: unless-stopped
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: docker/dashboard.Dockerfile
+    container_name: nyc-mobility-dashboard
+    depends_on:
+      - api
+    environment:
+      API_BASE_URL: http://api:8000
+    ports:
+      - "8501:8501"
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   kafka_data:
