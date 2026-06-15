@@ -97,6 +97,11 @@ black --check .
 All tests run against committed fixtures in `data/sample/` — no network or
 live GBFS access required.
 
+The streaming/spatial tests spin up a local Spark session with Sedona and
+Delta Lake. On first run, Spark/Ivy downloads the Sedona, GeoTools, and Delta
+jars from Maven Central (cached afterwards in `~/.ivy2`) — this requires
+Java 17 and a one-time internet connection, but no GBFS/Kafka access.
+
 ## Status
 
 This project is being built incrementally, phase by phase:
@@ -104,7 +109,7 @@ This project is being built incrementally, phase by phase:
 - [x] **Phase 1** — Project scaffold, Docker Compose (Postgres/PostGIS + Kafka),
       NYC borough polygons loaded into PostGIS, GBFS poller with retry/backoff
       publishing to Kafka
-- [ ] **Phase 2** — Spark Structured Streaming enrichment (H3 + Sedona spatial
+- [x] **Phase 2** — Spark Structured Streaming enrichment (H3 + Sedona spatial
       join), bronze/silver Delta tables
 - [ ] **Phase 3** — Hotspot detection + gold aggregates
 - [ ] **Phase 4** — Historical batch trip pipeline + data quality checks

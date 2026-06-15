@@ -14,10 +14,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up Java 17 (required by PySpark/Sedona)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+
+      - name: Cache Ivy packages (Sedona/Delta jars)
+        uses: actions/cache@v4
+        with:
+          path: ~/.ivy2
+          key: ivy2-${{ runner.os }}-sedona-1.6.1-delta-3.2.0
 
       - name: Install dependencies
         run: |
