@@ -24,11 +24,11 @@
 
 > Click the screenshot to open the **interactive animated diagram** with live flow paths.
 
-<a href="file:///Users/krishnendrasinghtomar/Documents/Projects/NYC-Mobility-Geospatial-Lakehouse/docs/architecture.html">
+<a href="https://20krish20.github.io/NYC-Mobility-Geospatial-Lakehouse/architecture.html">
   <img src="docs/screenshots/interactive-architecture.png" alt="Interactive Architecture Diagram — click to open animated version" width="100%"/>
 </a>
 
-<p align="center"><sub>↑ Animated version shows data flowing through each layer in real time · <a href="file:///Users/krishnendrasinghtomar/Documents/Projects/NYC-Mobility-Geospatial-Lakehouse/docs/architecture.html">Open interactive diagram →</a></sub></p>
+<p align="center"><sub>↑ Animated version shows data flowing through each layer in real time · <a href="https://20krish20.github.io/NYC-Mobility-Geospatial-Lakehouse/architecture.html">Open interactive diagram →</a></sub></p>
 
 ---
 
