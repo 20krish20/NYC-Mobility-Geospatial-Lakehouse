@@ -6,7 +6,7 @@ RUN pip install --no-cache-dir \
     fastapi \
     "uvicorn[standard]" \
     psycopg2-binary \
-    deltalake \
+    "deltalake[pyarrow]" \
     pandas \
     h3 \
     pydantic

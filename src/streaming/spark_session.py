@@ -41,5 +41,8 @@ def get_spark_session(
             "spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog"
         )
         .config("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
+        # Avoid the AdminClient "describeTopics" call that can't reach the broker's
+        # internal advertised listener (kafka:9092) from outside Docker.
+        .config("spark.sql.streaming.kafka.useDeprecatedOffsetFetching", "true")
     )
     return SedonaContext.create(builder.getOrCreate())
