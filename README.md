@@ -1,6 +1,8 @@
 # Real-Time NYC Mobility Geospatial Lakehouse
 
-> **Bike-share operators hemorrhage revenue when stations go empty or jammed.** This system ingests the live Citi Bike GBFS feed every 60 seconds, enriches each event with H3 spatial indexes and NYC borough polygons via Sedona point-in-polygon joins, and surfaces sustained imbalance hotspots to a live map dashboard — so rebalancing trucks can move before riders are stranded.
+> **A reference implementation of the real-time geospatial pipeline a bike-share operator needs for rebalancing.** Citi Bike's 2,400+ stations swing between empty and full on predictable daily cycles; the live GBFS feed already exists, so the hard part isn't *seeing* the data — it's turning live status into prioritized, anticipatory signal. This project builds that detection layer end to end: ingest the GBFS feed every 60 seconds, enrich each event with H3 spatial indexes and NYC borough polygons via Sedona point-in-polygon joins, and flag *sustained* imbalance hotspots (not momentary dips) on a live map dashboard.
+>
+> It's built as a capability demonstration, not a product — the goal is to show competent, end-to-end execution of the streaming + spatial + lakehouse stack that transportation and mobility companies hire for, on a realistic operational problem shape.
 
 <div align="center">
 
